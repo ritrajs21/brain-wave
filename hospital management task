@@ -1,0 +1,278 @@
+import java.awt.*;
+import java.io.*;
+import java.util.*;
+import java.util.List;
+import javax.swing.*;
+
+public class HospitalManagementSystemGUI extends JFrame {
+    private List<Patient> patients = new ArrayList<>();
+    private List<Appointment> appointments = new ArrayList<>();
+    private List<Staff> staffMembers = new ArrayList<>();
+    private Map<String, Integer> inventory = new HashMap<>();
+
+    private String currentUserRole = "";
+
+    public HospitalManagementSystemGUI() {
+        loadPatientData();
+        loadStaffData();
+        showLoginScreen();
+    }
+
+    private void showLoginScreen() {
+        JTextField userField = new JTextField();
+        JPasswordField passField = new JPasswordField();
+        Object[] message = {
+            "Username:", userField,
+            "Password:", passField
+        };
+
+        int option = JOptionPane.showConfirmDialog(null, message, "Login", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            String username = userField.getText();
+            String password = new String(passField.getPassword());
+            if (authenticate(username, password)) {
+                initializeUI();
+            } else {
+                JOptionPane.showMessageDialog(null, "Invalid credentials. Exiting.");
+                System.exit(0);
+            }
+        } else {
+            System.exit(0);
+        }
+    }
+
+    private boolean authenticate(String username, String password) {
+        if (username.equals("admin") && password.equals("admin123")) {
+            currentUserRole = "admin";
+            return true;
+        } else if (username.equals("reception") && password.equals("reception123")) {
+            currentUserRole = "reception";
+            return true;
+        }
+        return false;
+    }
+
+    private void initializeUI() {
+        setTitle("Hospital Management System - Logged in as: " + currentUserRole);
+        setSize(500, 400);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new GridLayout(8, 1));
+
+        JButton registerBtn = new JButton("Patient Registration");
+        JButton appointmentBtn = new JButton("Schedule Appointment");
+        JButton ehrBtn = new JButton("View EHR");
+        JButton billingBtn = new JButton("Billing & Invoicing");
+        JButton inventoryBtn = new JButton("Inventory Management");
+        JButton staffBtn = new JButton("Staff Management");
+        JButton themeBtn = new JButton("Switch Theme");
+        JButton exportBtn = new JButton("Export Patients to CSV");
+        JButton searchBtn = new JButton("Search Patient");
+        JButton exitBtn = new JButton("Exit");
+
+        registerBtn.addActionListener(e -> registerPatient());
+        appointmentBtn.addActionListener(e -> scheduleAppointment());
+        ehrBtn.addActionListener(e -> viewEHR());
+        billingBtn.addActionListener(e -> billing());
+        inventoryBtn.addActionListener(e -> manageInventory());
+        staffBtn.addActionListener(e -> manageStaff());
+        themeBtn.addActionListener(e -> switchTheme());
+        exportBtn.addActionListener(e -> exportPatientsToCSV());
+        searchBtn.addActionListener(e -> searchPatient());
+        exitBtn.addActionListener(e -> saveAndExit());
+
+        add(registerBtn);
+        add(appointmentBtn);
+        add(ehrBtn);
+        add(billingBtn);
+        if (currentUserRole.equals("admin")) {
+            add(inventoryBtn);
+            add(staffBtn);
+            add(exportBtn);
+        }
+        add(searchBtn);
+        add(themeBtn);
+        add(exitBtn);
+
+        setVisible(true);
+    }
+
+    private void switchTheme() {
+        try {
+            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Theme switch failed: " + e.getMessage());
+        }
+    }
+
+    private void registerPatient() {
+        String name = JOptionPane.showInputDialog("Enter patient name:");
+        int age = Integer.parseInt(JOptionPane.showInputDialog("Enter age:"));
+        Patient patient = new Patient(name, age);
+        patients.add(patient);
+        JOptionPane.showMessageDialog(this, "Patient registered with ID: " + patient.getId());
+    }
+
+    private void scheduleAppointment() {
+        int id = Integer.parseInt(JOptionPane.showInputDialog("Enter patient ID:"));
+        Optional<Patient> patient = patients.stream().filter(p -> p.getId() == id).findFirst();
+        if (patient.isPresent()) {
+            String doctor = JOptionPane.showInputDialog("Enter doctor name:");
+            String date = JOptionPane.showInputDialog("Enter appointment date:");
+            appointments.add(new Appointment(patient.get(), doctor, date));
+            JOptionPane.showMessageDialog(this, "Appointment scheduled.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Patient not found.");
+        }
+    }
+
+    private void viewEHR() {
+        int id = Integer.parseInt(JOptionPane.showInputDialog("Enter patient ID:"));
+        for (Patient p : patients) {
+            if (p.getId() == id) {
+                JOptionPane.showMessageDialog(this, p.toString());
+                return;
+            }
+        }
+        JOptionPane.showMessageDialog(this, "Patient not found.");
+    }
+
+    private void billing() {
+        int id = Integer.parseInt(JOptionPane.showInputDialog("Enter patient ID:"));
+        double amount = Double.parseDouble(JOptionPane.showInputDialog("Enter amount:"));
+        JOptionPane.showMessageDialog(this, "Invoice generated for Patient ID " + id + ": Rs." + amount);
+    }
+
+    private void manageInventory() {
+        StringBuilder currentInventory = new StringBuilder("Current Inventory:\n");
+        inventory.forEach((item, qty) -> currentInventory.append(item).append(": ").append(qty).append("\n"));
+        JOptionPane.showMessageDialog(this, currentInventory.toString());
+        String item = JOptionPane.showInputDialog("Enter item name:");
+        int quantity = Integer.parseInt(JOptionPane.showInputDialog("Enter quantity:"));
+        inventory.put(item, inventory.getOrDefault(item, 0) + quantity);
+        JOptionPane.showMessageDialog(this, "Inventory updated.");
+    }
+
+    private void manageStaff() {
+        String name = JOptionPane.showInputDialog("Enter staff name:");
+        String role = JOptionPane.showInputDialog("Enter role:");
+        staffMembers.add(new Staff(name, role));
+        JOptionPane.showMessageDialog(this, "Staff member added.");
+    }
+
+    private void exportPatientsToCSV() {
+        try (PrintWriter writer = new PrintWriter("patients.csv")) {
+            writer.println("ID,Name,Age");
+            for (Patient p : patients) {
+                writer.println(p.getId() + "," + p.name + "," + p.age);
+            }
+            JOptionPane.showMessageDialog(this, "Patients exported to patients.csv");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage());
+        }
+    }
+
+    private void searchPatient() {
+        String keyword = JOptionPane.showInputDialog("Enter patient name to search:");
+        StringBuilder result = new StringBuilder("Search Results:\n");
+        for (Patient p : patients) {
+            if (p.name.toLowerCase().contains(keyword.toLowerCase())) {
+                result.append(p.toString()).append("\n");
+            }
+        }
+        JOptionPane.showMessageDialog(this, result.length() > 17 ? result.toString() : "No matching patient found.");
+    }
+
+    private void saveAndExit() {
+        savePatientData();
+        saveStaffData();
+        System.exit(0);
+    }
+
+    private void savePatientData() {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("patients.dat"))) {
+            out.writeObject(patients);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error saving patients: " + e.getMessage());
+        }
+    }
+
+    private void loadPatientData() {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream("patients.dat"))) {
+            patients = (List<Patient>) in.readObject();
+        } catch (Exception ignored) {}
+    }
+
+    private void saveStaffData() {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("staff.dat"))) {
+            out.writeObject(staffMembers);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error saving staff: " + e.getMessage());
+        }
+    }
+
+    private void loadStaffData() {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream("staff.dat"))) {
+            staffMembers = (List<Staff>) in.readObject();
+        } catch (Exception ignored) {}
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(HospitalManagementSystemGUI::new);
+    }
+
+    public List getAppointments() {
+        return appointments;
+    }
+}
+
+class Patient implements Serializable {
+    private static int count = 1;
+    private final int id;
+    public final String name;
+    public final int age;
+
+    public Patient(String name, int age) {
+        this.id = count++;
+        this.name = name;
+        this.age = age;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String toString() {
+        return "Patient ID: " + id + ", Name: " + name + ", Age: " + age;
+    }
+}
+
+class Appointment {
+    private final Patient patient;
+    private final String doctor;
+    private final String date;
+
+    public Appointment(Patient patient, String doctor, String date) {
+        this.patient = patient;
+        this.doctor = doctor;
+        this.date = date;
+    }
+
+    public String toString() {
+        return "Appointment for " + patient + " with Dr. " + doctor + " on " + date;
+    }
+}
+
+class Staff implements Serializable {
+    private final String name;
+    private final String role;
+
+    public Staff(String name, String role) {
+        this.name = name;
+        this.role = role;
+    }
+
+    public String toString() {
+        return "Staff: " + name + ", Role: " + role;
+    }
+}
